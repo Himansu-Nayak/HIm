@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature addresses critical authentication and login issues in the AI-BH application. The system currently has compilation warnings, missing database initialization, CORS configuration gaps, and inadequate error handling that prevent users from successfully logging in. This specification defines requirements to make the authentication system production-ready with proper null safety, demo user support, improved error handling, and robust configuration.
+This feature addresses critical authentication and login issues in the HIm application. The system currently has compilation warnings, missing database initialization, CORS configuration gaps, and inadequate error handling that prevent users from successfully logging in. This specification defines requirements to make the authentication system production-ready with proper null safety, demo user support, improved error handling, and robust configuration.
 
 ## Glossary
 

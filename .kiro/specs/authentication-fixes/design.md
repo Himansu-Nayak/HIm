@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design addresses critical authentication issues in the AI-BH application by implementing null safety annotations, database initialization with demo users, enhanced CORS configuration, improved error handling, and production-ready JWT configuration. The solution maintains the existing Spring Security architecture while adding robustness and developer-friendly features.
+This design addresses critical authentication issues in the HIm application by implementing null safety annotations, database initialization with demo users, enhanced CORS configuration, improved error handling, and production-ready JWT configuration. The solution maintains the existing Spring Security architecture while adding robustness and developer-friendly features.
 
 The design follows a layered approach:
 1. **Security Layer**: Enhanced JWT filter with null safety

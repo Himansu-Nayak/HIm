@@ -1,4 +1,4 @@
-# AI.BH - Quick Start Guide
+# HIm - Quick Start Guide
 
 ## 🚀 Start the Application
 

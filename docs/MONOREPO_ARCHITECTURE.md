@@ -1,4 +1,4 @@
-# AI.bh — Enterprise Monorepo Architecture Walkthrough
+# HIm — Enterprise Monorepo Architecture Walkthrough
 **Document Version:** 2026.1  
 **Classification:** Internal Architectural Documentation  
 
@@ -6,11 +6,11 @@
 
 ## 🏗️ Monorepo Topology & Boundaries
 
-We have successfully established the foundational enterprise monorepo structure for **AI.bh** using **Turborepo** and **pnpm workspaces** (with dual compatibility for npm/yarn workspaces).
+We have successfully established the foundational enterprise monorepo structure for **HIm** using **Turborepo** and **pnpm workspaces** (with dual compatibility for npm/yarn workspaces).
 
 ### 📂 Directory Structure Overview
 ```text
-ai.bh/
+HIm/
  ├── apps/                             # Next.js 14 App Router & future client apps
  ├── services/                         # Python FastAPI & Go microservices
  ├── packages/                         # Shared TypeScript libraries (Config, State, UI)
