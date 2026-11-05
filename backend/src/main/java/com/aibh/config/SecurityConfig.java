@@ -30,8 +30,8 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origin-patterns:http://localhost:*,https://localhost:*}")
-    private List<String> allowedOriginPatterns;
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
+    private List<String> allowedOrigins;
     
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
@@ -67,14 +67,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/auth/**", "/public/**", "/h2-console/**", "/actuator/health", "/error").permitAll()
                 .requestMatchers("/aibh/health").permitAll()
                 .requestMatchers("/aibh/chat/stream").permitAll() // Allow stream migration
-                .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/swagger-ui/**").permitAll()
-                .requestMatchers("/v3/api-docs/**").permitAll()
-                .requestMatchers("/error").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // CRITICAL for CORS preflight
                 // Protected endpoints
                 .requestMatchers("/aibh/chat/**").authenticated()
                 .requestMatchers("/aibh/documents/**").authenticated()
@@ -96,7 +93,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));

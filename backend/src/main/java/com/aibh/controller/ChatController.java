@@ -73,18 +73,62 @@ public class ChatController {
         }
     }
 
+    @PostMapping(value = "/chat/image/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload image and chat", description = "Upload an image file and send a text message to the AI assistant")
+    @PreAuthorize("hasRole('USER') or hasRole('ENTERPRISE') or hasRole('ADMIN')")
+    public ResponseEntity<ChatResponse> uploadImageAndChat(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("message") String message,
+            @RequestParam(value = "sessionId", required = false) String sessionId,
+            @AuthenticationPrincipal UserPrincipal user) {
+        
+        logger.info("Processing multipart image chat request for user: {}", user.getEmail());
+        
+        try {
+            // Validate file type
+            String contentType = file.getContentType();
+            if (contentType == null || !List.of("image/jpeg", "image/png", "image/webp", "image/gif").contains(contentType)) {
+                return ResponseEntity.badRequest().body(ChatResponse.error("Invalid file type. Only JPEG, PNG, WEBP, and GIF are allowed."));
+            }
+            
+            // Validate file size (max 20MB)
+            if (file.getSize() > 20 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body(ChatResponse.error("File size exceeds 20MB limit."));
+            }
+            
+            // Convert to Base64
+            byte[] bytes = file.getBytes();
+            String base64Data = java.util.Base64.getEncoder().encodeToString(bytes);
+            String dataUrl = "data:" + contentType + ";base64," + base64Data;
+            
+            ChatRequest request = new ChatRequest();
+            request.setMessage(message);
+            request.setSessionId(sessionId);
+            request.setImageUrl(dataUrl);
+            request.setMessageType("IMAGE");
+            
+            ChatResponse response = chatService.processChat(request, user);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Failed to process image upload", e);
+            return ResponseEntity.internalServerError().body(ChatResponse.error("Failed to process image upload: " + e.getMessage()));
+        }
+    }
+
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream chat message", description = "Stream a text message from the AI assistant using SSE")
     public Flux<ServerSentEvent<String>> streamChat(
             @RequestParam String message,
             @RequestParam(required = false) String sessionId,
+            @RequestParam(required = false) String model,
             @AuthenticationPrincipal UserPrincipal user) {
         
         String userEmail = user != null ? user.getEmail() : "anonymous";
-        logger.info("Streaming chat request for user: {} (Session: {})", userEmail, sessionId);
+        logger.info("Streaming chat request for user: {} (Session: {}, Model: {})", userEmail, sessionId, model);
 
         try {
-            return chatService.streamAndPersist(message, sessionId, user)
+            return chatService.streamAndPersist(message, sessionId, user, model)
                     .map(content -> ServerSentEvent.<String>builder()
                             .data(content)
                             .build())
@@ -103,7 +147,7 @@ public class ChatController {
     }
     
     @PostMapping("/chat/image")
-    @Operation(summary = "Send image with message", description = "Send an image with text message to the AI assistant")
+    @Operation(summary = "Send image URL with message", description = "Send an image URL with text message to the AI assistant")
     @PreAuthorize("hasRole('USER') or hasRole('ENTERPRISE') or hasRole('ADMIN')")
     public ResponseEntity<ChatResponse> chatWithImage(
             @Valid @RequestBody ChatRequest request,
@@ -125,6 +169,19 @@ public class ChatController {
         logger.info("Retrieving chat history for user: {} and session: {}", user.getEmail(), sessionId);
         List<ChatMessage> history = chatService.getChatHistory(sessionId, user);
         return ResponseEntity.ok(history);
+    }
+
+    @GetMapping("/chat/history/paginated")
+    @Operation(summary = "Get paginated chat history", description = "Retrieve paginated chat history for a session")
+    @PreAuthorize("hasRole('USER') or hasRole('ENTERPRISE') or hasRole('ADMIN')")
+    public ResponseEntity<org.springframework.data.domain.Page<ChatMessage>> getChatHistoryPaginated(
+            @RequestParam String sessionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal user) {
+        
+        logger.info("Retrieving paginated chat history for user: {} and session: {}", user.getEmail(), sessionId);
+        return ResponseEntity.ok(chatService.getChatHistoryPaginated(sessionId, user, page, size));
     }
 
     @GetMapping("/chat/conversations")

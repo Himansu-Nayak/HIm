@@ -61,7 +61,7 @@ public class AiToolService {
                     .toUriString();
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "AI.BH/1.0 (Educational AI Assistant)");
+            headers.set("User-Agent", "HIm/1.0 (Educational AI Assistant)");
 
             ResponseEntity<String> response = restTemplate.exchange(
                     url, HttpMethod.GET, new HttpEntity<>(headers), String.class);

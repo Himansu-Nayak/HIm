@@ -1,4 +1,4 @@
-module aibh/memory-service
+module him/memory-service
 
 go 1.21
 

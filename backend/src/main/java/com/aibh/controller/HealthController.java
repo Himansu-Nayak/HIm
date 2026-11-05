@@ -102,7 +102,7 @@ public class HealthController {
         // Basic info
         health.put("status", "UP");
         health.put("timestamp", System.currentTimeMillis());
-        health.put("service", "AI.BH Backend");
+        health.put("service", "HIm Backend");
         health.put("version", "1.0.0");
         
         // Environment info
@@ -129,7 +129,7 @@ public class HealthController {
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> status() {
         Map<String, Object> status = new HashMap<>();
-        status.put("service", "AI.BH");
+        status.put("service", "HIm");
         status.put("status", aiService.hasAtLeastOneAvailableProvider() ? "OPERATIONAL" : "DEGRADED");
         status.put("uptime", getUptime());
         status.put("endpoints", getAvailableEndpoints());

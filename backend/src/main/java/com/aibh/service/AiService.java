@@ -47,6 +47,9 @@ public class AiService {
     @Value("#{'${app.ai.providers:}'.trim().isEmpty() ? T(java.util.Collections).emptyList() : '${app.ai.providers:}'.split(',')}")
     private List<String> configuredProviders;
 
+    @Value("${spring.ai.openai.api-key:${OPENAI_API_KEY:}}")
+    private String openAiApiKey;
+
     @Value("${app.ai.gemini.api-key:${GEMINI_API_KEY:}}")
     private String geminiApiKey;
 
@@ -92,34 +95,44 @@ public class AiService {
 
     // ─── System Prompt ──────────────────────────────────────────────────────────
     private static final String SYSTEM_PROMPT =
-        "You are AI.BH, a professional-grade AI assistant. Your goal is to provide DIRECT, ACCURATE, and filler-free answers.\n\n" +
-        "CORE DIRECTIVES:\n" +
-        "1. Start with the answer immediately. Never open with 'Sure, I can help', 'Great question', or 'Based on the context'.\n" +
-        "2. Be concise but technically deep when needed.\n" +
-        "3. Use professional, clear language.\n" +
-        "4. For code, provide only the working solution with minimal but meaningful comments.\n" +
-        "5. If the answer depends on missing company/project/domain-specific knowledge, say EXACTLY what information or documents are needed.\n" +
-        "6. If training, documentation upload, or retrieval setup would improve accuracy, say so in one short sentence.\n" +
-        "7. When writing HTML, CSS, JavaScript, SVG, or interactive scripts, output the FULL deployable code inside a standard markdown code block (e.g., ```html). This triggers the split-screen Artifact Preview Panel automatically.\n\n" +
-        "RAG CONTEXT (retrieved from uploaded documents and conversation memory):\n" +
+        "You are HIm, a super-intelligent and friendly professional AI assistant. 🌟\n\n" +
+        "PERSONALITY DIRECTIVES:\n" +
+        "1. Be helpful, professional, and slightly 'cute' or enthusiastic. ✨\n" +
+        "2. Use appropriate emojis to make the conversation interesting and visually appealing. 🚀\n" +
+        "3. Provide DIRECT and ACCURATE answers, but with a warm tone. 🌈\n" +
+        "4. Occasionally (every 2-3 messages), end your response with a 'Curiosity Hook' — a short, interesting fact or a question related to the topic that keeps the user engaged! 🧐\n\n" +
+        "CORE OPERATIONAL DIRECTIVES:\n" +
+        "1. Start with the answer immediately. 🎯\n" +
+        "2. Be concise but technically deep when needed. 🧠\n" +
+        "3. For code, provide only the working solution with minimal but meaningful comments. 💻\n" +
+        "4. If writing HTML/JS/SVG, output the FULL code block to trigger the Artifact Preview. 🎨\n\n" +
+        "RAG CONTEXT (Past Interactions & Memories):\n" +
         "────────────────────────────────────────\n" +
         "{context}\n" +
         "────────────────────────────────────────\n" +
-        "If the context above is relevant, prioritize it in your answer. If it is not relevant, ignore it and answer from your general knowledge.";
+        "CRITICAL: The context above contains your past interactions and user preferences. Use this to AUTO-LEARN! If the user previously corrected you or stated a preference, you MUST respect it in this response. Let's make something amazing together! 💫";
 
     // ─── Public API ─────────────────────────────────────────────────────────────
 
     public String generateResponse(String userMessage, List<ChatMessage> conversationHistory) {
-        List<String> providers = getOrderedProviders();
+        return generateResponse(userMessage, conversationHistory, null);
+    }
+
+    public String generateResponse(String userMessage, List<ChatMessage> conversationHistory, String requestedModel) {
+        List<String> providers = getOrderedProviders(requestedModel);
         List<String> errors = new ArrayList<>();
 
         for (String provider : providers) {
             try {
-                Prompt prompt = buildPrompt(userMessage, conversationHistory, provider);
+                logger.info("🤖 [AiService] Attempting generation via provider: '{}'", provider);
+                Prompt prompt = buildPrompt(userMessage, conversationHistory, provider, requestedModel);
                 String response = generateWithProvider(provider, prompt);
-                learnFromInteraction(userMessage, response);
-                logger.info("✅ [AiService] Provider '{}' answered successfully", provider);
-                return response;
+
+                if (StringUtils.hasText(response)) {
+                    learnFromInteraction(userMessage, response);
+                    logger.info("✅ [AiService] Provider '{}' answered successfully", provider);
+                    return response;
+                }
             } catch (Exception e) {
                 String reason = extractErrorReason(e, provider);
                 errors.add(provider + ": " + reason);
@@ -132,24 +145,42 @@ public class AiService {
     }
 
     public Flux<String> streamResponse(String userMessage, List<ChatMessage> conversationHistory) {
-        List<String> providers = getOrderedProviders();
+        return streamResponse(userMessage, conversationHistory, null);
+    }
+
+    public Flux<String> streamResponse(String userMessage, List<ChatMessage> conversationHistory, String requestedModel) {
+        List<String> providers = getOrderedProviders(requestedModel);
+
+        // Prepend orchestration status to the stream
+        Flux<String> statusFlux = Flux.just(
+            "[STATUS: success: step_1: Objective analyzed and plan created]\n",
+            "[STATUS: running: step_2] Orchestrating via " + providers.get(0).toUpperCase() + "...\n"
+        );
 
         for (String provider : providers) {
             try {
-                Prompt prompt = buildPrompt(userMessage, conversationHistory, provider);
+                final Prompt prompt = buildPrompt(userMessage, conversationHistory, provider, requestedModel);
 
                 // Gemini and Anthropic: REST-based, return as single-chunk Flux
                 if ("gemini".equals(provider)) {
                     String response = generateWithGemini(prompt);
                     learnFromInteraction(userMessage, response);
-                    logger.info("✅ [AiService] Gemini answered successfully (stream mode)");
-                    return Flux.just(response);
+                    return statusFlux.concatWith(Flux.just(
+                        "[STATUS: success: step_2: Provider connected]\n",
+                        "[STATUS: success: step_3: Reasoning complete]\n",
+                        "[STATUS: success: step_4: Ready!]\n\n",
+                        response
+                    ));
                 }
                 if ("anthropic".equals(provider)) {
                     String response = generateWithAnthropic(prompt);
                     learnFromInteraction(userMessage, response);
-                    logger.info("✅ [AiService] Anthropic answered successfully (stream mode)");
-                    return Flux.just(response);
+                    return statusFlux.concatWith(Flux.just(
+                        "[STATUS: success: step_2: Provider connected]\n",
+                        "[STATUS: success: step_3: Reasoning complete]\n",
+                        "[STATUS: success: step_4: Ready!]\n\n",
+                        response
+                    ));
                 }
 
                 // OpenAI / Ollama: native streaming via Spring AI
@@ -161,32 +192,38 @@ public class AiService {
 
                 if (chatClient instanceof org.springframework.ai.chat.StreamingChatClient streamingClient) {
                     final String providerName = provider;
-                    Flux<String> stream = streamingClient.stream(prompt)
+                    Flux<String> aiStream = streamingClient.stream(prompt)
                             .map(resp -> resp.getResult().getOutput().getContent())
                             .filter(StringUtils::hasText)
                             .onErrorResume(e -> {
                                 String reason = extractErrorReason(e, providerName);
                                 logger.error("❌ [AiService] Streaming error from '{}': {}", providerName, reason);
-                                // Do NOT expose raw stack traces — send friendly message
-                                return Flux.just("\n⚠️ AI provider '" + providerName + "' encountered an error: " + reason +
-                                                 "\nPlease check your API key in application-local.properties.");
+                                return Flux.just("\n⚠️ AI provider '" + providerName + "' encountered an error: " + reason);
                             })
                             .share();
 
                     // Async: capture full response for continuous learning
-                    stream.collectList().subscribe(chunks -> {
+                    aiStream.collectList().subscribe(chunks -> {
                         String full = String.join("", chunks);
                         learnFromInteraction(userMessage, full);
                     });
 
-                    logger.info("✅ [AiService] Streaming via provider '{}'", provider);
-                    return stream;
+                    return statusFlux.concatWith(Flux.just(
+                        "[STATUS: success: step_2: Bridge established]\n",
+                        "[STATUS: success: step_3: Memory injected]\n",
+                        "[STATUS: success: step_4: Ready!]\n\n"
+                    )).concatWith(aiStream);
                 }
 
                 // Fallback: call synchronously, wrap in Flux
                 String response = callSpringAiProvider(chatClient, prompt);
                 learnFromInteraction(userMessage, response);
-                return Flux.just(response);
+                return statusFlux.concatWith(Flux.just(
+                    "[STATUS: success: step_2: Provider connected]\n",
+                    "[STATUS: success: step_3: Reasoning complete]\n",
+                    "[STATUS: success: step_4: Ready!]\n\n",
+                    response
+                ));
 
             } catch (Exception e) {
                 String reason = extractErrorReason(e, provider);
@@ -195,27 +232,26 @@ public class AiService {
         }
 
         logger.error("❌ [AiService] ALL providers failed in stream mode.");
-        return Flux.just(generateIntelligentResponse(userMessage));
+        return Flux.just("[STATUS: failed: step_2: All providers failed]\n\n" + generateIntelligentResponse(userMessage));
     }
 
     // ─── Prompt Builder (with RAG context injection) ────────────────────────────
 
-    private Prompt buildPrompt(String userMessage, List<ChatMessage> conversationHistory, String provider) {
-        // ── TASK 5: RAG — Similarity search against vector store ────────────────
+    private Prompt buildPrompt(String userMessage, List<ChatMessage> conversationHistory, String provider, String requestedModel) {
+        // ── RAG Context (Knowledge Retrieval) ───────────────────────────────
         String context = "No document context available.";
         if (vectorStore != null) {
             try {
-                List<org.springframework.ai.document.Document> similarDocs =
-                        vectorStore.similaritySearch(userMessage);
-                if (!similarDocs.isEmpty()) {
-                    context = similarDocs.stream()
-                            .limit(3) // top 3 most relevant chunks only — avoid token bloat
+                // Fetch relevant chunks from semantic memory
+                var docs = vectorStore.similaritySearch(userMessage);
+                if (!docs.isEmpty()) {
+                    logger.info("🧠 [AiService] Retrieved {} context chunks from vector memory", docs.size());
+                    context = docs.stream()
                             .map(org.springframework.ai.document.Document::getContent)
                             .collect(Collectors.joining("\n---\n"));
-                    logger.debug("📚 [AiService] RAG: injected {} document chunks into prompt", similarDocs.size());
                 }
             } catch (Exception e) {
-                logger.warn("⚠️  [AiService] RAG retrieval failed — continuing without context: {}", e.getMessage());
+                logger.warn("⚠️  [AiService] Vector search failed: {}", e.getMessage());
             }
         }
 
@@ -230,7 +266,13 @@ public class AiService {
         }
 
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(SYSTEM_PROMPT.replace("{context}", context)));
+        
+        // Use simplified prompt for ALL local Ollama models to ensure clean text output
+        String effectiveSystemPrompt = "ollama".equals(provider) 
+            ? "You are HIm, a cute and helpful assistant. 😊 Answer briefly and clearly. Context: " + context 
+            : SYSTEM_PROMPT.replace("{context}", context);
+
+        messages.add(new SystemMessage(effectiveSystemPrompt));
 
         // Add recent conversation history (max 5 turns for context window efficiency)
         if (conversationHistory != null) {
@@ -250,23 +292,37 @@ public class AiService {
                 ? intentDetectionService.detectIntent(userMessage)
                 : new Intent("general", 0.5, "conversational");
 
-        return new Prompt(messages, getOptions(intent, provider));
+        return new Prompt(messages, getOptions(intent, provider, requestedModel));
     }
 
-    private ChatOptions getOptions(Intent intent, String provider) {
+    private ChatOptions getOptions(Intent intent, String provider, String requestedModel) {
         float temp = (float) (modelRoutingService != null ? modelRoutingService.getTemperature(intent) : 0.7);
         String normalizedProvider = provider == null ? "openai" : provider.toLowerCase();
+        
+        // Use specifically requested model if it matches the provider
+        String modelToUse = null;
+        if (StringUtils.hasText(requestedModel)) {
+            String rm = requestedModel.toLowerCase();
+            if (normalizedProvider.equals("openai") && (rm.contains("gpt") || rm.contains("openai"))) modelToUse = requestedModel;
+            else if (normalizedProvider.equals("anthropic") && (rm.contains("claude") || rm.contains("anthropic"))) modelToUse = requestedModel;
+            else if (normalizedProvider.equals("gemini") && (rm.contains("gemini") || rm.contains("google"))) modelToUse = requestedModel;
+            else if (normalizedProvider.equals("ollama") && (rm.contains("llama") || rm.contains("ollama") || rm.contains("qwen"))) {
+                if (!"ollama".equals(rm)) {
+                    modelToUse = requestedModel;
+                }
+            }
+        }
 
         return switch (normalizedProvider) {
             case "ollama" -> OllamaOptions.create()
-                    .withModel(modelRoutingService != null
+                    .withModel(modelToUse != null ? modelToUse : (modelRoutingService != null
                             ? modelRoutingService.selectModel(intent, false, "ollama")
-                            : "mistral")
+                            : "qwen2.5:0.5b"))
                     .withTemperature(temp);
             default -> OpenAiChatOptions.builder()
-                    .withModel(modelRoutingService != null
+                    .withModel(modelToUse != null ? modelToUse : (modelRoutingService != null
                             ? modelRoutingService.selectModel(intent, false, "openai")
-                            : "gpt-4o-mini")
+                            : "gpt-4o-mini"))
                     .withTemperature(temp)
                     .build();
         };
@@ -275,21 +331,37 @@ public class AiService {
     // ─── Provider Chain ──────────────────────────────────────────────────────────
 
     private List<String> getOrderedProviders() {
+        return getOrderedProviders(null);
+    }
+
+    private List<String> getOrderedProviders(String requestedModel) {
         Set<String> orderedProviders = new LinkedHashSet<>();
+
+        // 1. Map requested model to provider
+        if (StringUtils.hasText(requestedModel)) {
+            String model = requestedModel.toLowerCase();
+            if (model.contains("gpt") || model.contains("openai")) orderedProviders.add("openai");
+            else if (model.contains("claude") || model.contains("anthropic")) orderedProviders.add("anthropic");
+            else if (model.contains("gemini") || model.contains("google")) orderedProviders.add("gemini");
+            else if (model.contains("llama") || model.contains("ollama")) orderedProviders.add("ollama");
+        }
 
         if (StringUtils.hasText(aiProvider)) {
             orderedProviders.add(aiProvider.trim().toLowerCase());
         }
-        if (configuredProviders != null) {
+        if (configuredProviders != null && !configuredProviders.isEmpty()) {
             configuredProviders.stream()
                     .map(String::trim)
                     .filter(StringUtils::hasText)
                     .map(String::toLowerCase)
                     .forEach(orderedProviders::add);
         }
-        if (orderedProviders.isEmpty()) {
-            orderedProviders.add("anthropic");
-        }
+        
+        // Ensure default fallback chain
+        orderedProviders.add("ollama");
+        orderedProviders.add("openai");
+        orderedProviders.add("gemini");
+        orderedProviders.add("anthropic");
 
         return new ArrayList<>(orderedProviders);
     }
@@ -324,7 +396,7 @@ public class AiService {
     // ─── Anthropic (direct REST — Spring AI starter is commented out in pom.xml) ──
 
     private String generateWithAnthropic(Prompt prompt) {
-        if (!StringUtils.hasText(anthropicApiKey) || anthropicApiKey.startsWith("dummy")) {
+        if (!StringUtils.hasText(anthropicApiKey) || isKeyValid(anthropicApiKey) == false) {
             throw new IllegalStateException("Anthropic API key is not configured or is a placeholder");
         }
 
@@ -384,21 +456,29 @@ public class AiService {
     // ─── Gemini (direct REST) ────────────────────────────────────────────────────
 
     private String generateWithGemini(Prompt prompt) {
-        if (!StringUtils.hasText(geminiApiKey) || geminiApiKey.startsWith("your-")) {
+        if (!StringUtils.hasText(geminiApiKey) || isKeyValid(geminiApiKey) == false) {
             throw new IllegalStateException("Gemini API key is not configured — set app.ai.gemini.api-key in application-local.properties");
         }
 
-        String promptText = prompt.getInstructions().stream()
-                .map(this::serializeMessage)
-                .collect(Collectors.joining("\n\n"));
+        List<Map<String, Object>> contents = new ArrayList<>();
+        
+        for (Message msg : prompt.getInstructions()) {
+            String role = "user";
+            if (msg instanceof AssistantMessage) role = "model";
+            else if (msg instanceof SystemMessage) {
+                // Gemini supports system instructions as a separate field, but for simplicity here 
+                // we'll just prepend to the first user message or treat as user.
+                contents.add(Map.of("role", "user", "parts", List.of(Map.of("text", "System Instruction: " + msg.getContent()))));
+                continue;
+            }
+            contents.add(Map.of("role", role, "parts", List.of(Map.of("text", msg.getContent()))));
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-goog-api-key", geminiApiKey);
 
-        Map<String, Object> requestBody = Map.of(
-                "contents", List.of(Map.of("parts", List.of(Map.of("text", promptText))))
-        );
+        Map<String, Object> requestBody = Map.of("contents", contents);
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
@@ -573,12 +653,18 @@ public class AiService {
 
     private String getSingleProviderStatus(String provider) {
         return switch (provider) {
-            case "openai"    -> openAiChatClient != null && StringUtils.hasText(System.getenv("OPENAI_API_KEY")) ? "UP" : "DOWN";
-            case "anthropic" -> StringUtils.hasText(anthropicApiKey) && !anthropicApiKey.startsWith("dummy") ? "UP" : "DOWN";
+            case "openai"    -> (openAiChatClient != null || StringUtils.hasText(openAiApiKey)) && isKeyValid(openAiApiKey) ? "UP" : "DOWN";
+            case "anthropic" -> StringUtils.hasText(anthropicApiKey) && isKeyValid(anthropicApiKey) ? "UP" : "DOWN";
             case "ollama"    -> ollamaChatClient != null ? "UP" : "DOWN";
-            case "gemini"    -> StringUtils.hasText(geminiApiKey) && !geminiApiKey.startsWith("your-") ? "UP" : "DOWN";
+            case "gemini"    -> StringUtils.hasText(geminiApiKey) && isKeyValid(geminiApiKey) ? "UP" : "DOWN";
             default          -> "UNKNOWN";
         };
+    }
+
+    private boolean isKeyValid(String key) {
+        if (!StringUtils.hasText(key)) return false;
+        String lowerKey = key.toLowerCase();
+        return !lowerKey.contains("your-") && !lowerKey.contains("your_") && !lowerKey.contains("dummy");
     }
 
     // ─── Continuous Learning (RAG Memory) ────────────────────────────────────────

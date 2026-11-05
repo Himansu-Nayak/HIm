@@ -47,49 +47,70 @@ public class ChatService {
     private ChatMetrics chatMetrics;
 
     @Transactional
-    public Flux<String> streamAndPersist(String message, String sessionId, UserPrincipal userPrincipal) {
+    public Flux<String> streamAndPersist(String message, String sessionId, UserPrincipal userPrincipal, String requestedModel) {
         // Start metrics tracking
         chatMetrics.incrementChatRequests();
         var timerSample = chatMetrics.startTimer();
 
-        User user = userRepository.findActiveById(userPrincipal.getId())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        // 1. Resolve User (can be null for anonymous streaming)
+        User user = null;
+        if (userPrincipal != null && userPrincipal.getId() != null) {
+            user = userRepository.findActiveById(userPrincipal.getId()).orElse(null);
+        }
 
         if (!StringUtils.hasText(sessionId)) {
             sessionId = generateSessionId();
         }
 
-        Conversation conversation = getOrCreateConversation(sessionId, user, message);
-        String resolvedSessionId = conversation.getSessionId();
-        List<ChatMessage> history = chatMessageRepository.findRecentBySessionIdWithLimit(resolvedSessionId, 10);
+        // 2. Resolve Conversation (only if user exists)
+        final Conversation conversation;
+        final String resolvedSessionId;
+        List<ChatMessage> history = null;
+
+        if (user != null) {
+            conversation = getOrCreateConversation(sessionId, user, message);
+            resolvedSessionId = conversation.getSessionId();
+            history = chatMessageRepository.findRecentBySessionIdWithLimit(resolvedSessionId, 10);
+        } else {
+            conversation = null;
+            resolvedSessionId = sessionId;
+        }
         
         StringBuilder fullAiResponse = new StringBuilder();
         long startTime = System.currentTimeMillis();
+        final User finalUser = user;
         
-        return aiService.streamResponse(message, history)
+        return aiService.streamResponse(message, history, requestedModel)
                 .doOnNext(fullAiResponse::append)
                 .doOnComplete(() -> {
                     long responseTime = System.currentTimeMillis() - startTime;
-                    ChatMessage chatMessage = new ChatMessage(
-                        conversation, user, message, fullAiResponse.toString(), "TEXT"
-                    );
-                    chatMessage.setResponseTimeMs(responseTime);
-                    chatMessage.setTokensUsed(estimateTokens(message + fullAiResponse.toString()));
-                    chatMessageRepository.save(chatMessage);
+                    
+                    // 3. Persist only if we have a user and conversation
+                    if (conversation != null && finalUser != null) {
+                        ChatMessage chatMessage = new ChatMessage(
+                            conversation, finalUser, message, fullAiResponse.toString(), "TEXT"
+                        );
+                        chatMessage.setResponseTimeMs(responseTime);
+                        chatMessage.setTokensUsed(estimateTokens(message + fullAiResponse.toString()));
+                        chatMessageRepository.save(chatMessage);
+                        
+                        if (chatMessage.getTokensUsed() != null) {
+                            chatMetrics.recordTokensUsed(chatMessage.getTokensUsed());
+                        }
+                    }
                     
                     // Record metrics
                     chatMetrics.incrementSuccessfulRequests();
                     chatMetrics.recordResponseTime(timerSample);
-                    if (chatMessage.getTokensUsed() != null) {
-                        chatMetrics.recordTokensUsed(chatMessage.getTokensUsed());
-                    }
 
-                    logger.info("Streamed chat saved for user: {} in {}ms", userPrincipal.getEmail(), responseTime);
+                    String email = userPrincipal != null ? userPrincipal.getEmail() : "anonymous";
+                    logger.info("Streamed chat completed for user: {} in {}ms", email, responseTime);
                 })
                 .doOnError(error -> {
                     chatMetrics.incrementErrorRequests();
                     chatMetrics.recordResponseTime(timerSample);
-                    logger.error("Streaming chat error for user: {}", userPrincipal.getEmail(), error);
+                    String email = userPrincipal != null ? userPrincipal.getEmail() : "anonymous";
+                    logger.error("Streaming chat error for user: {}", email, error);
                 });
     }
     
@@ -129,7 +150,7 @@ public class ChatService {
                     conversationHistory
                 );
             } else {
-                aiResponse = aiService.generateResponse(request.getMessage(), conversationHistory);
+                aiResponse = aiService.generateResponse(request.getMessage(), conversationHistory, request.getModel());
             }
             
             long responseTime = System.currentTimeMillis() - startTime;
@@ -213,6 +234,19 @@ public class ChatService {
         
         // Fallback to session-based lookup for backward compatibility
         return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId);
+    }
+
+    public org.springframework.data.domain.Page<ChatMessage> getChatHistoryPaginated(String sessionId, UserPrincipal userPrincipal, int page, int size) {
+        Objects.requireNonNull(userPrincipal, "User authentication required");
+        Long userId = Objects.requireNonNull(userPrincipal.getId(), "User ID cannot be null");
+        User user = userRepository.findActiveById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        Conversation conversation = conversationRepository.findBySessionIdAndUser(sessionId, user)
+            .orElseThrow(() -> new RuntimeException("Conversation not found for session: " + sessionId));
+            
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        return chatMessageRepository.findByConversationOrderByCreatedAtDesc(conversation, pageable);
     }
     
     // Backward compatibility method

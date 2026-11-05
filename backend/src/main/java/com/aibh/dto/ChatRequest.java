@@ -18,6 +18,12 @@ public class ChatRequest {
 
     @Schema(description = "Type of message (TEXT, IMAGE)", example = "TEXT", defaultValue = "TEXT")
     private String messageType = "TEXT";
+
+    @Schema(description = "Requested model or provider", example = "gpt-4o")
+    private String model;
+
+    @Schema(description = "Alternative message field for Next.js frontend compatibility")
+    private String prompt;
     
     public ChatRequest() {}
     
@@ -27,7 +33,10 @@ public class ChatRequest {
     }
     
     // Getters and Setters
-    public String getMessage() { return message; }
+    public String getMessage() { 
+        if (message == null && prompt != null) return prompt;
+        return message; 
+    }
     public void setMessage(String message) { this.message = message; }
     
     public String getSessionId() { return sessionId; }
@@ -38,4 +47,10 @@ public class ChatRequest {
     
     public String getMessageType() { return messageType; }
     public void setMessageType(String messageType) { this.messageType = messageType; }
+
+    public String getModel() { return model; }
+    public void setModel(String model) { this.model = model; }
+
+    public String getPrompt() { return prompt; }
+    public void setPrompt(String prompt) { this.prompt = prompt; }
 }
