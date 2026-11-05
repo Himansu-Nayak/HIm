@@ -57,6 +57,8 @@ export default function ArtifactPanel() {
       return activeArtifact.content;
     }
 
+    const cleanCode = activeArtifact.content.replace(/import[\s\S]*?from[\s\S]*?;/g, '');
+
     // Transpile React JSX/TSX on the fly inside the sandbox
     return `
       <!DOCTYPE html>
@@ -78,14 +80,36 @@ export default function ArtifactPanel() {
         <body>
           <div id="root"></div>
           <script type="text/babel">
-            ${activeArtifact.content.replace(/import[\s\S]*?from[\s\S]*?;/g, '')}
+            const codeToAnalyze = ${JSON.stringify(cleanCode)};
+            ${cleanCode}
             
+            let CompName = "${activeArtifact.title}";
+            
+            // Robust component name detection
+            if (CompName === "ReactDashboard" || CompName === "App" || CompName === "Generated Artifact") {
+              const match = /export default function (\\w+)/.exec(codeToAnalyze);
+              if (match) CompName = match[1];
+              else {
+                const match2 = /function (\\w+)/.exec(codeToAnalyze);
+                if (match2) CompName = match2[1];
+                else {
+                  const match3 = /const (\\w+) =/.exec(codeToAnalyze);
+                  if (match3) CompName = match3[1];
+                }
+              }
+            }
+
             // Render the component
             const rootElement = document.getElementById('root');
             const root = ReactDOM.createRoot(rootElement);
             
-            // Assume the main export is the component
-            root.render(<${activeArtifact.title} />);
+            try {
+              root.render(React.createElement(window[CompName] || eval(CompName)));
+            } catch (e) {
+              // Fallback if component name detection fails
+              console.error("Render error:", e);
+              root.render(<div style={{padding: '20px', color: '#f59e0b'}}>Error rendering component. Please check console.</div>);
+            }
           </script>
         </body>
       </html>

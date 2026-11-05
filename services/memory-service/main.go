@@ -96,7 +96,7 @@ func main() {
 	http.HandleFunc("/api/memory/query", queryMemoryHandler)
 
 	port := ":8002"
-	log.Printf("Starting AI.bh Go Memory & Sandbox Gateway on port %s...", port)
+	log.Printf("Starting HIm Go Memory & Sandbox Gateway on port %s...", port)
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

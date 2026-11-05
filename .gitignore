@@ -70,3 +70,8 @@ data/
 backend/data/
 *.mv.db
 *.trace.db
+
+# Lint outputs
+lint-*.json
+*-lint.json
+eslint-unix.txt

@@ -123,14 +123,15 @@ const ArtifactPanel = ({ artifact, onClose }) => {
             const root = ReactDOM.createRoot(rootElement);
             
             let CompName = "${componentTitle}";
+            const codeToAnalyze = ${JSON.stringify(cleanCode)};
             if (CompName === "Generated Artifact" || CompName === "App") {
-              const match = /export default function (\w+)/.exec(\`${cleanCode.replace(/`/g, '\\`')}\`);
+              const match = /export default function (\w+)/.exec(codeToAnalyze);
               if (match) CompName = match[1];
               else {
-                const match2 = /function (\w+)/.exec(\`${cleanCode.replace(/`/g, '\\`')}\`);
+                const match2 = /function (\w+)/.exec(codeToAnalyze);
                 if (match2) CompName = match2[1];
                 else {
-                  const match3 = /const (\w+) =/.exec(\`${cleanCode.replace(/`/g, '\\`')}\`);
+                  const match3 = /const (\w+) =/.exec(codeToAnalyze);
                   if (match3) CompName = match3[1];
                 }
               }

@@ -1,7 +1,7 @@
 # Design Document: Enterprise Transformation
 
 ## Overview
-This document outlines the architectural and design decisions for transforming AI.BH into an enterprise-grade platform. The transformation focuses on security, observability, scalability, and developer experience.
+This document outlines the architectural and design decisions for transforming HIm into an enterprise-grade platform. The transformation focuses on security, observability, scalability, and developer experience.
 
 ## 1. Security & Authentication (Epic 1)
 

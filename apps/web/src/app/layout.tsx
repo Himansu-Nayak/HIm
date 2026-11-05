@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata = {
-  title: 'AI.bh — Enterprise AI Operating System',
+  title: 'HIm — Enterprise AI Operating System',
   description: 'Multi-model AI orchestration, autonomous agents, and live sandboxed artifacts.',
 };
 

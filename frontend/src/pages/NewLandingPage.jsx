@@ -41,7 +41,7 @@ const NewLandingPage = () => {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-secondary-400 bg-clip-text text-transparent">
-                AI.BH
+                HIm
               </span>
             </motion.div>
 
@@ -194,7 +194,7 @@ const NewLandingPage = () => {
                 <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-secondary-400 rounded-lg flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold">AI.BH</span>
+                <span className="text-xl font-bold">HIm</span>
               </div>
               <p className="text-text-lighter">Smart AI Platform for Automation</p>
             </div>
@@ -228,7 +228,7 @@ const NewLandingPage = () => {
           </div>
           
           <div className="border-t border-navy-600 mt-8 pt-8 text-center text-text-lighter">
-            <p>&copy; 2024 AI.BH. All rights reserved.</p>
+            <p>&copy; 2024 HIm. All rights reserved.</p>
           </div>
         </div>
       </footer>

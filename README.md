@@ -1,6 +1,6 @@
-# AI.BH - Smart AI Assistant
+# HIm - Smart AI Assistant
 
-AI.BH is a full-stack AI assistant built using Spring Boot and React, featuring conversational AI, voice interaction, image understanding, and persistent chat memory. Designed for students and developers, AI.BH focuses on clarity, performance, and scalability.
+HIm is a full-stack AI assistant built using Spring Boot and React, featuring conversational AI, voice interaction, image understanding, and persistent chat memory. Designed for students and developers, HIm focuses on clarity, performance, and scalability.
 
 ## Features
 

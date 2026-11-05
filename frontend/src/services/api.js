@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Append /api if not present in the URL
+const BASE_URL = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -23,19 +25,20 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle token refresh
+// Add response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     
+    // If 401 Unauthorized, clean up and redirect to login (C2)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          const response = await axios.post(`${BASE_URL}/auth/refresh`, {
             refreshToken
           });
           
@@ -48,13 +51,19 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed, clear tokens and redirect to login
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+
+      // If no refresh token or failed, also cleanup and redirect
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
     
     return Promise.reject(error);
@@ -62,11 +71,12 @@ api.interceptors.response.use(
 );
 
 export const chatAPI = {
-  sendMessage: async (message, sessionId) => {
+  sendMessage: async (message, sessionId, model) => {
     try {
       const response = await api.post('/aibh/chat', {
         message,
         sessionId,
+        model,
         messageType: 'TEXT'
       });
       return response.data;
@@ -76,9 +86,9 @@ export const chatAPI = {
     }
   },
 
-  streamMessage: async (message, sessionId, onChunk) => {
+  streamMessage: async (message, sessionId, onChunk, model) => {
     const token = localStorage.getItem('token');
-    const url = `${API_BASE_URL}/aibh/chat/stream?message=${encodeURIComponent(message)}${sessionId ? `&sessionId=${sessionId}` : ''}`;
+    const url = `${BASE_URL}/aibh/chat/stream?message=${encodeURIComponent(message)}${sessionId ? `&sessionId=${sessionId}` : ''}${model ? `&model=${encodeURIComponent(model)}` : ''}`;
     
     const response = await fetch(url, {
       headers: {
@@ -155,12 +165,41 @@ export const chatAPI = {
     }
   },
 
+  uploadImageAndChat: async (file, message, sessionId) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('message', message);
+      if (sessionId) formData.append('sessionId', sessionId);
+
+      const response = await api.post('/aibh/chat/image/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Multipart image upload error:', error);
+      throw error;
+    }
+  },
+
   getChatHistory: async (sessionId) => {
     try {
       const response = await api.get(`/aibh/chat/history?sessionId=${sessionId}`);
       return response.data;
     } catch (error) {
       console.error('Get chat history error:', error);
+      throw error;
+    }
+  },
+
+  getChatHistoryPaginated: async (sessionId, page = 0, size = 20) => {
+    try {
+      const response = await api.get(`/aibh/chat/history/paginated?sessionId=${sessionId}&page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get paginated history error:', error);
       throw error;
     }
   },

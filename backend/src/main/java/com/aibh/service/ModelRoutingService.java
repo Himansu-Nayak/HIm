@@ -1,6 +1,7 @@
 package com.aibh.service;
 
 import com.aibh.model.Intent;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,6 +26,12 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ModelRoutingService {
+
+    @Value("${spring.ai.ollama.chat.model:mistral}")
+    private String ollamaDefaultModel;
+
+    @Value("${app.ai.gemini.model:gemini-1.5-pro}")
+    private String geminiDefaultModel;
 
     public String selectModel(Intent intent, boolean isVisionRequest) {
         return selectModel(intent, isVisionRequest, "openai");
@@ -84,18 +91,15 @@ public class ModelRoutingService {
 
     // ── Ollama (local / zero-latency) ─────────────────────────────────────────
     private String selectOllamaModel(Intent intent) {
-        return switch (intent.getType()) {
-            case "technical", "problem_solving" -> "codellama"; // purpose-built for code
-            case "academic"                     -> "llama3";    // best local reasoning
-            default                             -> "mistral";   // fastest general-purpose
-        };
+        // Use the configured model since local resources are limited
+        return ollamaDefaultModel;
     }
 
     private String defaultModelForProvider(String provider) {
         return switch (provider) {
             case "anthropic" -> "claude-3-haiku-20240307";
-            case "gemini"    -> "gemini-2.0-flash";
-            case "ollama"    -> "mistral";
+            case "gemini"    -> geminiDefaultModel;
+            case "ollama"    -> ollamaDefaultModel;
             default          -> "gpt-4o-mini";
         };
     }

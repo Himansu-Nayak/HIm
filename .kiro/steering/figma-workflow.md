@@ -2,9 +2,9 @@
 inclusion: manual
 ---
 
-# Figma to Code Workflow for AI.BH
+# Figma to Code Workflow for HIm
 
-This guide explains how to use the Figma power to convert your AI.BH designs into React code.
+This guide explains how to use the Figma power to convert your HIm designs into React code.
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ Use the Figma AI prompt provided to generate your designs with:
 
 Once your design is ready, copy the Figma URL. It should look like:
 ```
-https://figma.com/design/abc123/AI-BH?node-id=1-2
+https://figma.com/design/abc123/HIm?node-id=1-2
 ```
 
 ### Step 3: Generate Code

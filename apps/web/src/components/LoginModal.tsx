@@ -98,7 +98,7 @@ export default function LoginModal() {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center space-x-2">
             <Bot className="w-6 h-6 text-warm-500" />
-            <span>AI.bh Gateway</span>
+            <span>HIm Gateway</span>
           </DialogTitle>
           <DialogDescription className="text-sand-400">
             Access your secure Java-powered AI workspace.

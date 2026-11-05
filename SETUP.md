@@ -1,4 +1,4 @@
-# AI.BH Setup Guide
+# HIm Setup Guide
 
 ## Prerequisites
 

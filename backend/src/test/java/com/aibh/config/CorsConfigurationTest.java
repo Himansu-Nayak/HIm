@@ -15,7 +15,7 @@ public class CorsConfigurationTest {
     @Test
     public void testCorsConfiguration() {
         SecurityConfig config = new SecurityConfig();
-        ReflectionTestUtils.setField(config, "allowedOriginPatterns", List.of("http://localhost:*", "https://app.ai-bh.com"));
+        ReflectionTestUtils.setField(config, "allowedOriginPatterns", List.of("http://localhost:*", "https://app.him.com"));
         CorsConfigurationSource source = config.corsConfigurationSource();
         
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -28,7 +28,7 @@ public class CorsConfigurationTest {
         
         assertNotNull(cors);
         assertTrue(cors.getAllowedOriginPatterns().contains("http://localhost:*"));
-        assertTrue(cors.getAllowedOriginPatterns().contains("https://app.ai-bh.com"));
+        assertTrue(cors.getAllowedOriginPatterns().contains("https://app.him.com"));
         assertTrue(cors.getAllowedMethods().contains("OPTIONS"));
         assertTrue(cors.getAllowCredentials());
         assertTrue(cors.getExposedHeaders().contains("Authorization"));

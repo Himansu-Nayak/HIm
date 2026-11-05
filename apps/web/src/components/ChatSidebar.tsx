@@ -13,8 +13,18 @@ export default function ChatSidebar() {
 
   return (
     <aside className="w-64 bg-navy-800 border-r border-navy-700 flex flex-col h-full flex-shrink-0 z-20">
-      <div className="p-4">
-        <Link href="/chat/new" className="w-full flex items-center justify-center space-x-2 bg-warm-500 hover:bg-warm-600 text-white rounded-xl py-3 px-4 transition-all shadow-lg font-bold text-sm">
+      <div className="p-6 border-b border-navy-700/50 mb-2">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-8 h-8 bg-gradient-to-br from-warm-400 to-warm-600 rounded-lg flex items-center justify-center shadow-lg transform -rotate-6">
+            <MessageSquare className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black text-white tracking-tighter">HIm PRO ✨</h1>
+            <p className="text-[9px] uppercase font-bold text-sand-500 tracking-widest">Enterprise Edition</p>
+          </div>
+        </div>
+        
+        <Link href="/chat/new" className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-warm-500 to-warm-600 hover:from-warm-600 hover:to-warm-700 text-white rounded-xl py-3 px-4 transition-all shadow-lg font-bold text-xs uppercase tracking-tight hover:scale-105 active:scale-95">
           <Plus className="w-4 h-4" />
           <span>New Workspace</span>
         </Link>

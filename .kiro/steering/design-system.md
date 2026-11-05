@@ -2,9 +2,9 @@
 inclusion: always
 ---
 
-# Design System Rules for AI-BH Project
+# Design System Rules for HIm Project
 
-This document defines the design system structure and integration guidelines for converting Figma designs to code in the AI-BH project.
+This document defines the design system structure and integration guidelines for converting Figma designs to code in the HIm project.
 
 ## Project Overview
 
@@ -275,7 +275,7 @@ When implementing Figma designs with backend connectivity:
 - **Build**: `npm run build`
 - **Preview**: `npm run preview`
 
-## AI.BH Page Structure (Figma Design)
+## HIm Page Structure (Figma Design)
 
 The application follows this page structure:
 

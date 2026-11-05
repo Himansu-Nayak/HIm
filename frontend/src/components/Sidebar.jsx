@@ -44,14 +44,14 @@ const Sidebar = ({ onNewChat, chatHistory = [], currentChatId, onSelectChat }) =
       >
         <div className="flex flex-col h-full p-4">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 px-2">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-sand-500 to-sand-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-warm-400 via-sand-500 to-warm-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
                 <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">AI.BH</h1>
-                <p className="text-xs text-sand-400">Assistant</p>
+                <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-sand-400 tracking-tight">HIm ✨</h1>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-warm-500/80">Your Cute AI Buddy 🎀</p>
               </div>
             </div>
           </div>

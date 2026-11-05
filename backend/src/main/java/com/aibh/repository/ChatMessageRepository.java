@@ -29,7 +29,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     // New conversation-based methods
     List<ChatMessage> findByConversationOrderByCreatedAtAsc(Conversation conversation);
     
-    List<ChatMessage> findByConversationOrderByCreatedAtDesc(Conversation conversation, Pageable pageable);
+    org.springframework.data.domain.Page<ChatMessage> findByConversationOrderByCreatedAtDesc(Conversation conversation, org.springframework.data.domain.Pageable pageable);
     
     @Query("SELECT c FROM ChatMessage c WHERE c.conversation = :conversation ORDER BY c.createdAt DESC")
     List<ChatMessage> findRecentByConversation(@Param("conversation") Conversation conversation, Pageable pageable);

@@ -1,7 +1,7 @@
 # Implementation Plan: Enterprise Transformation
 
 ## Overview
-This plan outlines the step-by-step tasks for the enterprise transformation of AI.BH.
+This plan outlines the step-by-step tasks for the enterprise transformation of HIm.
 
 ## Tasks
 

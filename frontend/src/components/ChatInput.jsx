@@ -9,8 +9,8 @@ import toast from 'react-hot-toast';
 const ChatInput = ({ onSendMessage, disabled, statusMessage }) => {
   const [message, setMessage] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null); // This will now hold the File object
+  const [imagePreview, setImagePreview] = useState(null); // This holds the data URL for preview
   const [isUploading, setIsUploading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   
@@ -88,16 +88,16 @@ const ChatInput = ({ onSendMessage, disabled, statusMessage }) => {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast.error('Image size should be less than 5MB');
+      if (file.size > 20 * 1024 * 1024) { // 20MB limit as per backend change
+        toast.error('Image size should be less than 20MB');
         return;
       }
 
+      setSelectedImage(file);
+      
       const reader = new FileReader();
       reader.onload = (e) => {
-        const base64 = e.target.result;
-        setSelectedImage(base64);
-        setImagePreview(base64);
+        setImagePreview(e.target.result);
         setShowAttachMenu(false);
         toast.success('Image selected!');
       };

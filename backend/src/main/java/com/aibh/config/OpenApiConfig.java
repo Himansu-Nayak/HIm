@@ -25,11 +25,11 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
             .info(new Info()
-                .title("AI.BH Enterprise API")
+                .title("HIm Enterprise API")
                 .version("2.0.0")
                 .description("Enterprise AI Assistant Platform API with authentication, rate limiting, and monitoring")
                 .contact(new Contact()
-                    .name("AI.BH Development Team")
+                    .name("HIm Development Team")
                     .email("support@aibh.com")
                     .url("https://github.com/aibh/ai-assistant"))
                 .license(new License()

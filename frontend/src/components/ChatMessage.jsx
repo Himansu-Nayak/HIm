@@ -46,19 +46,22 @@ const ChatMessage = ({ message, isUser, timestamp, imageUrl, index, onOpenArtifa
     >
       {/* Avatar */}
       <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.3, delay: index * 0.1 + 0.1 }}
-        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
+        initial={{ scale: 0, rotate: -45 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', damping: 12, delay: index * 0.1 + 0.1 }}
+        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg relative ${
           isUser 
             ? 'bg-gradient-to-br from-sand-500 to-sand-700' 
-            : 'bg-gradient-to-br from-warm-400 to-warm-600'
+            : 'bg-gradient-to-br from-warm-400 via-sand-500 to-warm-600'
         }`}
       >
         {isUser ? (
           <User className="w-5 h-5 text-white" />
         ) : (
-          <Bot className="w-5 h-5 text-white" />
+          <>
+            <Bot className="w-5 h-5 text-white" />
+            <span className="absolute -top-1 -right-1 text-[10px]">✨</span>
+          </>
         )}
       </motion.div>
       
