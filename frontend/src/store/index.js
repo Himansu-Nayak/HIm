@@ -1,5 +1,5 @@
 /**
- * AI.BH — Global Chat Store (Zustand)
+ * HIm — Global Chat Store (Zustand)
  *
  * Replaces Context API + scattered useState.
  * Claude/ChatGPT reference: Redux Toolkit / Zustand
@@ -47,8 +47,10 @@ export const useChatStore = create(
       isLoadingHistory: false,
       streamingContent: '',  // accumulates SSE chunks for live typing
       isStreaming: false,
+      selectedModel: 'ollama',
 
       // ── Message Actions ───────────────────────────────────────────────────
+      setSelectedModel: (model) => set({ selectedModel: model }),
       addMessage: (msg) =>
         set((state) => ({ messages: [...state.messages, msg] })),
 
@@ -91,7 +93,7 @@ export const useChatStore = create(
           messages: [
             {
               id: 1,
-              message: 'Welcome to AI.BH. I am your professional AI assistant. How can I help you today?',
+              message: 'Welcome to HIm. I am your professional AI assistant. How can I help you today?',
               isUser: false,
               timestamp: new Date().toISOString(),
             },

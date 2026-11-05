@@ -20,9 +20,9 @@ const ChatPage = () => {
   // ── Zustand stores ──────────────────────────────────────────────────────────
   const {
     messages, sessionId, chatHistory, currentChatId,
-    isLoading, isLoadingHistory,
+    isLoading, isLoadingHistory, selectedModel,
     addMessage, setMessages, setIsLoading,
-    initializeChat, setSessionId,
+    initializeChat, setSessionId, setSelectedModel,
     loadConversation, refreshConversations,
     updateChatHistoryEntry,
   } = useChatStore();
@@ -70,8 +70,8 @@ const ChatPage = () => {
   }, [messages]);
 
   // ── Send message (streaming) ────────────────────────────────────────────────
-  const handleSendMessage = async (messageText, imageData = null) => {
-    if (!messageText && !imageData) return;
+  const handleSendMessage = async (messageText, imageFile = null) => {
+    if (!messageText && !imageFile) return;
 
     // Ensure we have a session
     let activeSession = sessionId;
@@ -80,12 +80,20 @@ const ChatPage = () => {
       setSessionId(activeSession);
     }
 
+    // Create a preview URL for the local image if it's a File object
+    let localImageUrl = null;
+    if (imageFile instanceof File) {
+      localImageUrl = URL.createObjectURL(imageFile);
+    } else if (typeof imageFile === 'string') {
+      localImageUrl = imageFile;
+    }
+
     const userMsg = {
       id: Date.now(),
       message: messageText,
       isUser: true,
       timestamp: new Date().toISOString(),
-      imageUrl: imageData || null,
+      imageUrl: localImageUrl,
     };
     addMessage(userMsg);
     setIsLoading(true);
@@ -95,9 +103,15 @@ const ChatPage = () => {
     }
 
     try {
-      if (imageData) {
-        // Image chat (non-streaming)
-        const resp = await chatAPI.sendImageMessage(messageText, imageData, activeSession);
+      if (imageFile) {
+        // Image chat (non-streaming, using multipart if it's a File)
+        let resp;
+        if (imageFile instanceof File) {
+          resp = await chatAPI.uploadImageAndChat(imageFile, messageText, activeSession);
+        } else {
+          resp = await chatAPI.sendImageMessage(messageText, imageFile, activeSession);
+        }
+        
         addMessage({ id: Date.now() + 1, message: resp.response, isUser: false, timestamp: resp.timestamp });
         updateChatHistoryEntry(activeSession, messageText);
         await refreshConversations();
@@ -118,12 +132,12 @@ const ChatPage = () => {
                 m.id === aiMsgId ? { ...m, message: fullResponse } : m
               )
             );
-          });
+          }, selectedModel);
         } catch (streamErr) {
           // Fallback to non-streaming
           console.warn('Stream failed, falling back:', streamErr);
           try {
-            const resp = await chatAPI.sendMessage(messageText, activeSession);
+            const resp = await chatAPI.sendMessage(messageText, activeSession, selectedModel);
             fullResponse = resp.response || 'The assistant could not generate a response.';
           } catch {
             fullResponse = '⚠️ Both streaming and fallback failed. Please check your AI provider configuration.';
@@ -151,6 +165,12 @@ const ChatPage = () => {
       });
     } finally {
       setIsLoading(false);
+      // Clean up object URL to prevent memory leaks
+      if (localImageUrl && imageFile instanceof File) {
+        // We might want to keep it if we need it for display later, 
+        // but typically the message component will have it.
+        // URL.revokeObjectURL(localImageUrl);
+      }
     }
   };
 
@@ -183,17 +203,28 @@ const ChatPage = () => {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-warm-500 to-warm-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-warm-400 via-sand-500 to-warm-600 rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
                 <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white">AI.BH Assistant</h1>
-                <p className="text-sm text-sand-400">
-                  {isLoading ? 'Thinking...' : serviceHealth?.status === 'UP' ? 'Ready to help' : 'Service needs attention'}
+                <h1 className="text-lg font-bold text-white tracking-tight">HIm Buddy ✨</h1>
+                <p className="text-xs text-sand-400 font-medium">
+                  {isLoading ? 'Thinking... 🌈' : serviceHealth?.status === 'UP' ? 'Ready to play! 🎀' : 'Oopsie, I need help! 🛠️'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-navy-900 border border-navy-700 text-sand-100 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-warm-500 shadow-inner font-semibold"
+              >
+                <option value="ollama">Ollama (Local)</option>
+                <option value="gpt-4o">ChatGPT (OpenAI)</option>
+                <option value="claude-3-5-sonnet">Claude (Anthropic)</option>
+                <option value="gemini-1.5-pro">Gemini (Google)</option>
+              </select>
+
               {/* Artifact history badge */}
               {artifactOpen && (
                 <motion.div
@@ -235,7 +266,7 @@ const ChatPage = () => {
                 <div className="w-20 h-20 bg-gradient-to-br from-warm-500 to-warm-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
                   <Bot className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-4">Welcome to AI.BH</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">Welcome to HIm</h2>
                 <p className="text-sand-300 mb-8 max-w-md mx-auto">
                   Your intelligent assistant is ready to help you learn, create, and solve problems.
                 </p>

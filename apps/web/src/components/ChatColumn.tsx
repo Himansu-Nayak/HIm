@@ -3,9 +3,20 @@
 import { useState, useRef, useEffect, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, Message } from '@aibh/state';
-import { Bot, User, Send, Cpu, Sparkles, AlertCircle, RefreshCw, Edit3, Check, Layers, Paperclip, Image as ImageIcon, Folder, X, MoreVertical, Hash } from 'lucide-react';
+import { Bot, User, Send, Cpu, Sparkles, AlertCircle, RefreshCw, Edit3, Check, Layers, Paperclip, Image as ImageIcon, Folder, X, MoreVertical, Hash, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+const CURIOSITY_FACTS = [
+  "Did you know? AI can now identify emotions in human voices with 90% accuracy! 🎭",
+  "Interesting fact: The first AI program was written back in 1951! 📜",
+  "Fun fact: ChatGPT reached 100 million users in just 2 months! 🚀",
+  "Curiosity: AI helps astronomers find new planets hidden in starlight. 🌌",
+  "Fact: Some AIs can now translate over 200 different languages in real-time! 🌍",
+  "Wow! AI models use billions of parameters to understand your intent. 🧠",
+  "Cool: AI is being used to predict weather patterns weeks in advance. 🌦️",
+  "Did you know? Modern AI can generate art that looks just like oil paintings. 🎨"
+];
 
 interface ChatColumnProps {
   chatId: string;
@@ -14,10 +25,11 @@ interface ChatColumnProps {
 
 export default function ChatColumn({ chatId, currentView }: ChatColumnProps) {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('claude-3-5-sonnet');
-  const [systemPrompt, setSystemPrompt] = useState('You are AI.bh, an elite enterprise AI operating system. Provide clear, modular, and production-ready code or analysis.');
+  const [selectedModel, setSelectedModel] = useState('ollama');
+  const [systemPrompt, setSystemPrompt] = useState('You are HIm, an elite enterprise AI operating system. Provide clear, modular, and production-ready code or analysis.');
   const [isEditingSystem, setIsEditingSystem] = useState(false);
   const [attachments, setAttachments] = useState<{ name: string, type: string, file?: File }[]>([]);
+  const [factIndex, setFactIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
@@ -34,11 +46,22 @@ export default function ChatColumn({ chatId, currentView }: ChatColumnProps) {
   const commitStreamedMessage = useAppStore((state) => state.commitStreamedMessage);
   const setActiveArtifact = useAppStore((state) => state.setActiveArtifact);
   const setExecutionGraph = useAppStore((state) => state.setExecutionGraph);
+  const updateStepStatus = useAppStore((state) => state.updateStepStatus);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-useEffect(() => {
-  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-}, [messages, streamingContent]);
+  
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingContent]);
+
+  useEffect(() => {
+    if (isStreaming) {
+      const interval = setInterval(() => {
+        setFactIndex((prev) => (prev + 1) % CURIOSITY_FACTS.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isStreaming]);
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   if (e.target.files) {
@@ -55,36 +78,77 @@ const removeAttachment = (index: number) => {
   setAttachments(prev => prev.filter((_, i) => i !== index));
 };
 
-// Handle sending messages to the actual API
-const handleSend = async () => {
-  if ((!input.trim() && attachments.length === 0) || isStreaming) return;
+  // Handle sending messages to the actual API
+  const handleSend = async () => {
+    if ((!input.trim() && attachments.length === 0) || isStreaming) return;
 
-  const userMsg: Message = {
-    id: `msg_${Date.now()}`,
-    role: 'user',
-    content: input + (attachments.length > 0 ? `\n\n[Attached: ${attachments.map(a => a.name).join(', ')}]` : ''),
-    timestamp: Date.now(),
-    attachments: attachments.map(a => ({ id: Math.random().toString(), name: a.name, type: a.type, url: '#' }))
-  };
+    const userMsg: Message = {
+      id: `msg_${Date.now()}`,
+      role: 'user',
+      content: input,
+      timestamp: Date.now(),
+      attachments: attachments.map(a => ({ id: Math.random().toString(), name: a.name, type: a.type, url: '#' }))
+    };
 
-  addMessage(chatId, userMsg);
-  setInput('');
-  setAttachments([]);
+    addMessage(chatId, userMsg);
+    
+    // Captured state for the request
+    const messageText = input;
+    const currentAttachments = [...attachments];
+    
+    setInput('');
+    setAttachments([]);
 
-  // Start streaming from the API
-  try {
-    const response = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId,
-          prompt: input,
-          model: selectedModel,
-          systemPrompt,
-        }),
-      });
+    // Initialize agent steps if needed
+    const isAgentic = currentView === 'agents' || messageText.toLowerCase().includes('research') || messageText.toLowerCase().includes('agent');
+    if (isAgentic) {
+      setExecutionGraph([
+        { id: 'step_1', action: 'Decomposing objective into task DAG', status: 'running' },
+        { id: 'step_2', action: 'Executing MCP Tool: DuckDuckGo Web Search', status: 'pending' },
+        { id: 'step_3', action: 'Executing Firecracker Sandbox: Python Data Aggregation', status: 'pending' },
+        { id: 'step_4', action: 'LLM Reflection & Self-Correction Critique', status: 'pending' },
+      ]);
+    }
+
+    // Start streaming from the API
+    try {
+      // Check if we have an image to upload
+      const imageAttachment = currentAttachments.find(a => a.type.includes('image'));
+      let endpoint = '/api/chat/stream';
+      let method = 'POST';
+      let body: any = {
+        chatId,
+        prompt: messageText,
+        model: selectedModel,
+        systemPrompt,
+        isAgentic,
+      };
+
+      // If we have an image, we use the multipart endpoint (non-streaming in this version of backend)
+      if (imageAttachment && imageAttachment.file) {
+        const formData = new FormData();
+        formData.append('file', imageAttachment.file);
+        formData.append('message', messageText);
+        formData.append('sessionId', chatId);
+        formData.append('model', selectedModel);
+        
+        const response = await fetch('/api/chat', { // Proxies to /api/aibh/chat/image/upload
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Image upload failed');
+        const data = await response.json();
+        appendStreamChunk(data.response || data.content || 'Image processed successfully.');
+        commitStreamedMessage('assistant');
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
       if (!response.ok) {
         throw new Error('Failed to connect to AI gateway');
@@ -97,12 +161,37 @@ const handleSend = async () => {
         throw new Error('Response body is null');
       }
 
+      let accumulated = '';
+      let hasRealContent = false;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        appendStreamChunk(chunk);
+        accumulated += chunk;
+        
+        // Robust Status Marker Parsing (handles partial chunks)
+        const statusMatch = accumulated.match(/\[STATUS: (success|running|failed): (step_\d)(?:: (.*?))?\]/);
+        if (statusMatch) {
+          const [fullMatch, status, stepId, result] = statusMatch;
+          updateStepStatus(stepId, status as any, result);
+          // Remove the tag from accumulation so it doesn't leak to UI
+          accumulated = accumulated.replace(fullMatch, '');
+        }
+
+        // Only start showing the message once we have text that isn't just status tags or formatting newlines
+        if (!hasRealContent) {
+            accumulated = accumulated.replace(/^[\n\r]+/, ''); // Strip leading newlines if we haven't started
+            if (accumulated.trim().length > 0 && !accumulated.includes('[STATUS:')) {
+                hasRealContent = true;
+            }
+        }
+
+        if (hasRealContent && accumulated.length > 0) {
+          appendStreamChunk(accumulated);
+          accumulated = ''; // clear for next chunks
+        }
       }
 
       const finalContent = commitStreamedMessage('assistant');
@@ -120,38 +209,27 @@ const handleSend = async () => {
         });
       }
     } catch (error) {
-      console.error('Chat error:', error);
-      appendStreamChunk("\n\n**Error**: Failed to connect to the AI orchestrator. Please ensure the backend services are running.");
+      console.error('Chat error details:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      appendStreamChunk(`\n\n**Error**: Failed to connect to the AI orchestrator (${errorMessage}). Please ensure the backend services are running.`);
       commitStreamedMessage('assistant');
-    }
-
-    // Trigger LangGraph Agent Workflow simulation if view is agents or specific intent detected
-    if (currentView === 'agents' || input.toLowerCase().includes('research') || input.toLowerCase().includes('agent')) {
-      startTransition(() => {
-        setExecutionGraph([
-          { id: 'step_1', action: 'Decomposing objective into task DAG', status: 'success', result: 'Identified 3 sub-tasks: Web Search, Data Extraction, Sandbox Charting.' },
-          { id: 'step_2', action: 'Executing MCP Tool: DuckDuckGo Web Search', status: 'success', result: 'Retrieved top 10 relevant industry reports.' },
-          { id: 'step_3', action: 'Executing Firecracker Sandbox: Python Data Aggregation', status: 'running' },
-          { id: 'step_4', action: 'LLM Reflection & Self-Correction Critique', status: 'pending' },
-        ]);
-      });
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-navy-900 z-10 relative">
+    <div className="flex-1 flex flex-col h-full bg-mesh z-10 relative">
       {/* Top Header & Model Router Selector */}
-      <header className="px-6 py-4 bg-navy-800/80 backdrop-blur-md border-b border-navy-700 flex items-center justify-between flex-shrink-0 shadow-lg">
+      <header className="px-6 py-4 bg-navy-800/60 backdrop-blur-xl border-b border-navy-700/50 flex items-center justify-between flex-shrink-0 shadow-2xl">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-warm-500 to-warm-700 rounded-xl flex items-center justify-center shadow-md">
-            <Cpu className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-br from-warm-400 via-sand-500 to-warm-600 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300 animate-float">
+            <Bot className="w-6 h-6 text-white" />
           </div>
           <div>
             <h2 className="text-sm font-bold text-white flex items-center space-x-2">
-              <span>AI.bh Orchestrator</span>
-              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 text-[10px] font-mono">v2026.1</span>
+              <span className="sparkle-text">HIm Buddy ✨</span>
+              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 text-[10px] font-mono tracking-tighter">v2026.1</span>
             </h2>
-            <p className="text-xs text-sand-400">Multi-Model Routing & Token Streaming</p>
+            <p className="text-[10px] font-bold text-warm-500 uppercase tracking-widest leading-none mt-1 opacity-80">The Cutest Orchestrator 🎀</p>
           </div>
         </div>
 
@@ -173,16 +251,16 @@ const handleSend = async () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <label className="text-xs text-sand-400 font-semibold">Active Model:</label>
+            <label className="text-xs text-sand-400 font-semibold italic">Power Source:</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="bg-navy-900 border border-navy-700 text-sand-100 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-warm-500 shadow-inner font-semibold"
+              className="bg-navy-900 border border-navy-700 text-sand-100 text-[10px] rounded-xl px-3 py-1.5 focus:outline-none focus:border-warm-500 shadow-inner font-bold uppercase tracking-wide"
             >
-              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Coding/Artifacts)</option>
-              <option value="gpt-4o">GPT-4o (Reasoning/Math)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (1M Context/RAG)</option>
-              <option value="vllm-llama-3-70b">vLLM Llama-3 70B (Local Air-Gapped)</option>
+              <option value="ollama">Ollama (Local Buddy) 🏠</option>
+              <option value="gpt-4o">ChatGPT-4o (Brainy) 🧠</option>
+              <option value="claude-3-5-sonnet">Claude 3.5 (Creative) 🎨</option>
+              <option value="gemini-1.5-pro">Gemini Pro (Google) 🌟</option>
             </select>
           </div>
         </div>
@@ -277,15 +355,39 @@ const handleSend = async () => {
             {/* Live Token Streaming Bubble */}
             {isStreaming && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-navy-800 border border-navy-700 text-warm-400 flex items-center justify-center flex-shrink-0 shadow-md animate-pulse">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-warm-400 via-sand-500 to-warm-600 text-white flex items-center justify-center flex-shrink-0 shadow-md relative">
                   <Bot className="w-4 h-4" />
+                  <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1, repeat: Infinity }} className="absolute -top-1 -right-1 text-[8px]">✨</motion.span>
                 </div>
                 <div className="flex flex-col max-w-2xl items-start">
                   <div className="p-4 rounded-2xl shadow-xl text-xs leading-relaxed bg-navy-800 border border-navy-700 text-sand-100 rounded-tl-none border-l-2 border-l-warm-500">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none prose-pre:bg-navy-900 prose-pre:border prose-pre:border-navy-700 prose-pre:rounded-xl">
-                      {streamingContent}
-                    </ReactMarkdown>
-                    <span className="inline-block w-2 h-3 bg-warm-400 animate-pulse ml-1 align-middle" />
+                    {streamingContent ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none prose-pre:bg-navy-900 prose-pre:border prose-pre:border-navy-700 prose-pre:rounded-xl">
+                        {streamingContent}
+                      </ReactMarkdown>
+                    ) : (
+                      <div className="flex flex-col space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <motion.div className="w-1.5 h-1.5 bg-warm-500 rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.8, repeat: Infinity, delay: 0 }} />
+                          <motion.div className="w-1.5 h-1.5 bg-warm-500 rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }} />
+                          <motion.div className="w-1.5 h-1.5 bg-warm-500 rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }} />
+                          <span className="text-[10px] text-sand-500 font-bold uppercase tracking-widest italic">Brewing Intelligence... 🌈</span>
+                        </div>
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={factIndex}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="bg-navy-900/50 p-2.5 rounded-xl border border-white/5 flex items-start space-x-2"
+                          >
+                            <Sparkles className="w-3 h-3 text-yellow-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-[11px] text-sand-400 italic leading-snug">{CURIOSITY_FACTS[factIndex]}</p>
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                    )}
+                    {streamingContent && <span className="inline-block w-2 h-3 bg-warm-400 animate-pulse ml-1 align-middle" />}
                   </div>
                 </div>
               </motion.div>
@@ -346,7 +448,7 @@ const handleSend = async () => {
                 handleSend();
               }
             }}
-            placeholder={isStreaming ? 'AI is generating tokens...' : 'Ask AI.bh anything... (Shift+Enter for newline)'}
+            placeholder={isStreaming ? 'AI is generating tokens...' : 'Ask HIm anything... (Shift+Enter for newline)'}
             disabled={isStreaming}
             rows={2}
             className="flex-1 bg-transparent border-none text-xs text-sand-100 placeholder-sand-500 p-2 focus:outline-none resize-none font-sans"

@@ -175,6 +175,18 @@ const createAgentSlice: StateCreator<AppStore, [['zustand/devtools', never]], []
 });
 
 // --- Root Store Export ---
+const OLD_KEY = 'AI.bh-Enterprise-Store';
+const NEW_KEY = 'HIm-Enterprise-Store';
+if (typeof window !== 'undefined') {
+  try {
+    const old = window.localStorage.getItem(OLD_KEY);
+    if (old !== null && window.localStorage.getItem(NEW_KEY) === null) {
+      window.localStorage.setItem(NEW_KEY, old);
+    }
+    window.localStorage.removeItem(OLD_KEY);
+  } catch {}
+}
+
 export const useAppStore = create<AppStore>()(
   devtools(
     (...a) => ({
@@ -182,6 +194,6 @@ export const useAppStore = create<AppStore>()(
       ...createArtifactSlice(...a),
       ...createAgentSlice(...a),
     }),
-    { name: 'AI.bh-Enterprise-Store' }
+    { name: 'HIm-Enterprise-Store' }
   )
 );

@@ -76,7 +76,7 @@ const SignupPage = () => {
           >
             <Bot className="w-8 h-8 text-white" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-warm-900 mb-2">Join AI.BH</h1>
+          <h1 className="text-3xl font-bold text-warm-900 mb-2">Join HIm</h1>
           <p className="text-warm-600">Create your account and start exploring</p>
         </div>
 

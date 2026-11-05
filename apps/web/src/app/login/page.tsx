@@ -89,7 +89,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-2">AI.bh Gateway</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">HIm Gateway</h1>
           <p className="text-sand-400 text-sm mb-8">Access your secure Java-powered AI workspace.</p>
 
           <div className="flex flex-col space-y-4">

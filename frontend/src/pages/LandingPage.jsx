@@ -7,7 +7,7 @@ const LandingPage = () => {
     {
       icon: MessageCircle,
       title: 'Intelligent Conversations',
-      description: 'Engage in natural, context-aware conversations with AI.BH'
+      description: 'Engage in natural, context-aware conversations with HIm'
     },
     {
       icon: Mic,
@@ -52,7 +52,7 @@ const LandingPage = () => {
                 <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-warm-900">AI.BH</h1>
+                <h1 className="text-xl font-bold text-warm-900">HIm</h1>
                 <p className="text-xs text-warm-600">Assistant</p>
               </div>
             </motion.div>
@@ -89,7 +89,7 @@ const LandingPage = () => {
             </div>
             
             <h1 className="text-5xl md:text-6xl font-bold text-warm-900 mb-6">
-              Meet <span className="text-sand-600">AI.BH</span>
+              Meet <span className="text-sand-600">HIm</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-warm-700 mb-4 max-w-3xl mx-auto">
@@ -124,7 +124,7 @@ const LandingPage = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-warm-900 mb-4">
-              Why Choose AI.BH?
+              Why Choose HIm?
             </h2>
             <p className="text-xl text-warm-600 max-w-2xl mx-auto">
               Designed for students, professionals, and anyone curious about the world
@@ -191,12 +191,12 @@ const LandingPage = () => {
                 <Bot className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">AI.BH</h3>
+                <h3 className="font-semibold text-white">HIm</h3>
                 <p className="text-xs">Intelligent Assistant</p>
               </div>
             </div>
             <p className="text-sm">
-              © 2024 AI.BH. Crafted with care for everyone.
+              © 2024 HIm. Crafted with care for everyone.
             </p>
           </div>
         </div>
